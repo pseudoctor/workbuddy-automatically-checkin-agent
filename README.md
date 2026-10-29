@@ -9,26 +9,57 @@ WorkBuddy / CodeBuddy「Buddy 加油站」自动签到 skill：OAuth 设备授�
 
 本仓库是给 agent 安装用的，不含任何账号凭证。下载本 skill 不等于获得任何人的账号，接收方必须用自己的账号单独走一次 OAuth 授权。
 
+## 快速开始
+
+```bash
+git clone https://github.com/pseudoctor/workbuddy-automatically-checkin-agent.git
+cd workbuddy-automatically-checkin-agent
+python3 scripts/checkin.py --status # 无凭证时应返回 no_credential
+bash scripts/workbuddy_oauth.sh url # 拿到授权链接，用户登录确认后：
+python3 scripts/poll_and_save.py # 轮询 → 落盘 → 首次签到
+python3 scripts/checkin.py --checkin # 验证签到
+```
+
+然后在自己的环境里建每天 09:00 Asia/Shanghai 的定时，入口是 `scripts/daily_checkin.sh`（触发后随机等 0–30 分钟，实际签到在 09:00–09:30 之间）。完整流程见下面各节，给其他 agent 的可复制指令也在下面。
+
 ## 版本
 
 - skill 名：`workbuddy-automatically-checkin-agent`
-- 打包时间：2026-10-29
-- 压缩包：`workbuddy-automatically-checkin-agent.zip`，sha256：`f070c3c6191b46e5f3626fd1c66a935482256d5bc7e3416e7e27cbdd58e47deb`
+- 最新 Release：[v1.0.0](https://github.com/pseudoctor/workbuddy-automatically-checkin-agent/releases/tag/v1.0.0)（2026-10-29，首次发布）
+- Release 压缩包：[workbuddy-automatically-checkin-agent.zip](https://github.com/pseudoctor/workbuddy-automatically-checkin-agent/releases/download/v1.0.0/workbuddy-automatically-checkin-agent.zip)，sha256：`f070c3c6191b46e5f3626fd1c66a935482256d5bc7e3416e7e27cbdd58e47deb`
+- 校验压缩包：`sha256sum workbuddy-automatically-checkin-agent.zip`，结果须与上面一致
 - 以后 skill 再改，请同步更新源码和压缩包，并更新上面这行 sha，否则对方 agent 可能拿到旧版。
+
+## 文件结构
+
+```
+.
+├── README.md # 本文件：安装、开通、定时、汇报、安全
+├── SKILL.md # skill 完整说明（agent 应先读它）
+├──.gitignore # 挡住凭证、日志、state/cookie，绝不进仓库
+├── references/
+│ └── api-spec.md # 接口端点、字段口径、踩坑记录
+└── scripts/
+├── checkin.py # 签到执行器（仅签到，标准库，多账号、查余额）
+├── daily_checkin.sh # 每日定时入口（随机延时 + checkin-all）
+├── poll_and_save.py # 安全轮询落盘（全程不打印令牌）
+├── provision.py # 一键交互开通
+└── workbuddy_oauth.sh # OAuth 授权链接签发
+```
 
 ## 安装（给 agent）
 
-方式 A：克隆仓库（把下面地址换成实际仓库地址）：
+方式 A：克隆仓库：
 
 ```bash
-git clone <仓库地址>
+git clone https://github.com/pseudoctor/workbuddy-automatically-checkin-agent.git
 cd workbuddy-automatically-checkin-agent
 ```
 
-方式 B：只下载压缩包（把下面地址换成实际仓库地址，或换成 Release 附件地址）：
+方式 B：只下载 Release 压缩包：
 
 ```bash
-curl -L -o workbuddy-automatically-checkin-agent.zip <压缩包地址>
+curl -L -o workbuddy-automatically-checkin-agent.zip https://github.com/pseudoctor/workbuddy-automatically-checkin-agent/releases/download/v1.0.0/workbuddy-automatically-checkin-agent.zip
 unzip workbuddy-automatically-checkin-agent.zip
 cd workbuddy-automatically-checkin-agent
 ```
@@ -96,7 +127,15 @@ python3 scripts/checkin.py --list-accounts
 
 ## 给其他 agent 的指令（可直接复制）
 
-> 请从本仓库安装 workbuddy-automatically-checkin-agent：先确认 python3 和 curl 可用，跑 `scripts/checkin.py --status`；然后用 `scripts/workbuddy_oauth.sh url` 签发授权链接发给用户，用户在浏览器登录并确认“登录完成”后，用 `scripts/poll_and_save.py` 轮询落盘并首次签到（全程不打印令牌）；再跑 `scripts/checkin.py --checkin` 验证；最后在你自己的环境里建每天 09:00 Asia/Shanghai 的定时，入口是 `scripts/daily_checkin.sh`，成功时按 README 的五项格式汇报，已领静默，失败汇报并提示重新授权。不要安装其他执行器，不要用桌面 UI 点按路线，不要把令牌写进聊天或日志。
+> 请从 https://github.com/pseudoctor/workbuddy-automatically-checkin-agent 安装 workbuddy-automatically-checkin-agent：先确认 python3 和 curl 可用，跑 `scripts/checkin.py --status`；然后用 `scripts/workbuddy_oauth.sh url` 签发授权链接发给用户，用户在浏览器登录并确认“登录完成”后，用 `scripts/poll_and_save.py` 轮询落盘并首次签到（全程不打印令牌）；再跑 `scripts/checkin.py --checkin` 验证；最后在你自己的环境里建每天 09:00 Asia/Shanghai 的定时，入口是 `scripts/daily_checkin.sh`，成功时按 README 的五项格式汇报，已领静默，失败汇报并提示重新授权。不要安装其他执行器，不要用桌面 UI 点按路线，不要把令牌写进聊天或日志。
+
+## 常见问题
+
+- **打开的授权页是 CodeBuddy，不是 WorkBuddy，是不是错了？** 不是。这是本 skill 原设计：授权走 `copilot.tencent.com` 的 CodeBuddy 设备授权，签到与余额走 `www.codebuddy.cn`，WorkBuddy 是客户端的名字。
+- **第二个账号怎么还是第一个账号？** 授权时浏览器如果还保持着第一个账号的登录态，会直接自动授权，不换号。加第二个账号前，先退出第一个账号，或用无痕窗口 / 另一个浏览器身份打开授权链接；落盘后核对两个账号的账号标识确实不同，才算真正接好。
+- **令牌失效了怎么办？** 重新走一次 OAuth 授权即可，旧凭证会被新凭证覆盖；不要把旧令牌发给任何人，也不要在聊天里贴令牌。
+- **今天已经领过了，再跑会怎样？** 返回 `already_checked_in`，不会重复领，也不会扣分。
+- **接口突然不可用了？** 所用接口为非官方接口，上游随时可能变更；先看 `references/api-spec.md` 的端点是否还在，再按实际接口调整，不要盲目重试。
 
 ## 安全与合规
 
@@ -104,3 +143,4 @@ python3 scripts/checkin.py --list-accounts
 - 本流程仅供本人授权账号、私有环境自动化；不得商用、不得批量注册小号、不得售卖账号池或额度。
 - 所用接口为非官方逆向接口（源自开源项目 workbuddy2api-panel，MIT 协议）：授权页是 CodeBuddy（`copilot.tencent.com`），签到与余额走 `www.codebuddy.cn`；上游随时可能变更导致不可用，届时以实际接口为准。
 - 详细端点、踩坑与聚合口径见 `references/api-spec.md`，完整开通流程见 `SKILL.md`。
+- 本仓库许可证：MIT（见 `LICENSE`）。
