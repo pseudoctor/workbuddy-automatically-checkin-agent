@@ -1,0 +1,16 @@
+# 凭证与运行时文件：绝不能提交进仓库
+.workbuddy/
+checkin-rt.json
+checkin-rt-*.json
+checkin.log
+.wb_oauth_state.json
+.wb_oauth_cookies.txt
+*.log
+
+# Python 编译缓存
+__pycache__/
+*.py[cod]
+
+# 本地临时文件
+*.tmp
+.env
